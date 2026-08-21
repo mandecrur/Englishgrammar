@@ -1,0 +1,38 @@
+<!--
+  ============================================================
+  CÓMO REGISTRAR EL PROGRESO EN TUS EJERCICIOS EXISTENTES
+  ============================================================
+  1. Copia este bloque justo antes de </body> en cada ejercicio HTML.
+  2. Cambia la ruta "shared/supabase-client.js" si el ejercicio está en
+     otra carpeta (debe apuntar a la carpeta "shared" del proyecto).
+  3. Llama a markComplete() en el momento en que el ejercicio se dé
+     por terminado (por ejemplo, al acertar todas las preguntas).
+
+  EJEMPLO DE USO dentro de tu propio código del ejercicio:
+
+     if (aciertos === totalPreguntas) {
+       markComplete("ex-01", "Ejercicio 1", aciertos);
+     }
+
+  El primer argumento (ex-01) debe coincidir EXACTAMENTE con el "id"
+  que le diste a ese ejercicio en la lista EXERCISES de dashboard.html.
+  ============================================================
+-->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared/supabase-client.js"></script>
+<script>
+  async function markComplete(exerciseId, exerciseName, score = null) {
+    const { data: { session } } = await client.auth.getSession();
+    if (!session) {
+      console.warn("No hay sesión activa: el progreso no se puede guardar.");
+      return;
+    }
+    const { error } = await markExerciseComplete(exerciseId, exerciseName, score);
+    if (error) {
+      console.error("No se pudo guardar el progreso:", error);
+    } else {
+      console.log("Progreso guardado:", exerciseId);
+    }
+  }
+</script>

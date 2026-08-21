@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ejercicio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#16261F; --bg-panel:#1E362C; --bg-card:#233F32;
+    --ink:#F0EBDA; --ink-dim:#B9C4BA;
+    --accent:#D9A441;
+    --line: rgba(240,235,218,0.14);
+    --ok:#7C9885; --bad:#C1666B;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; }
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:18px 28px; border-bottom:1px solid var(--line); background:var(--bg-panel);
+    position:sticky; top:0; z-index:5;
+  }
+  header a{ color:var(--ink-dim); text-decoration:none; font-size:13px; }
+  header a:hover{ color:var(--accent); }
+  #levelTag{
+    font-family:'Space Mono',monospace; font-size:10.5px; background:var(--accent);
+    color:#16261F; padding:3px 9px; border-radius:2px;
+  }
+  main{ max-width:740px; margin:0 auto; padding:36px 22px 100px; }
+  h1{ font-family:'Space Mono',monospace; font-size:24px; margin:6px 0 2px; }
+  .translation{ color:var(--accent); font-size:14.5px; margin-bottom:26px; font-style:italic; }
+
+  section.block{ margin-bottom:36px; }
+  section.block > h2.blockTitle{
+    font-family:'Space Mono',monospace; font-size:13px; text-transform:uppercase;
+    letter-spacing:0.07em; color:var(--accent); margin:0 0 14px; display:flex; align-items:center; gap:8px;
+  }
+  section.block > h2.blockTitle .n{
+    background:var(--accent); color:#16261F; font-size:11px; border-radius:2px; padding:1px 7px;
+  }
+  .groupInstructions{ color:var(--ink-dim); font-size:13px; margin:-8px 0 14px; }
+
+  /* Vocabulario */
+  .vocabGrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:8px; margin-bottom:8px; }
+  .vocabItem{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:4px; padding:10px 12px; font-size:13.5px;
+  }
+  .vocabItem .en{ font-weight:600; }
+  .vocabItem .es{ color:var(--ink-dim); font-size:12.5px; }
+
+  /* Teoría */
+  .theory{
+    background:var(--bg-card); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:4px; padding:20px 22px; font-size:14px; line-height:1.7;
+  }
+  .theory p{ margin:0 0 12px; }
+  .theory p:last-child{ margin-bottom:0; }
+  .theory table{ width:100%; border-collapse:collapse; margin:10px 0; font-size:13.5px; }
+  .theory td, .theory th{ border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  .theory strong{ color:var(--accent); }
+  .theory em{ color:var(--ink-dim); font-style:italic; }
+
+  /* Preguntas */
+  .q{ background:var(--bg-card); border:1px solid var(--line); border-radius:4px; padding:18px 20px; margin-bottom:14px; }
+  .q .num{ font-family:'Space Mono',monospace; font-size:11px; color:var(--ink-dim); margin-bottom:8px; }
+  .q .prompt{ font-size:15px; margin-bottom:14px; line-height:1.5; }
+  .q .prompt em{ color:var(--accent); font-style:normal; border-bottom:1px dashed var(--accent); }
+
+  .opt{ display:block; width:100%; text-align:left; background:var(--bg); border:1px solid var(--line);
+    color:var(--ink); padding:10px 12px; border-radius:3px; margin-bottom:8px; cursor:pointer; font-size:14px;
+    font-family:'Inter',sans-serif; }
+  .opt:hover{ border-color:var(--accent); }
+  .opt.selected{ border-color:var(--accent); background:rgba(217,164,65,0.1); }
+  .opt.correct{ border-color:var(--ok); background:rgba(124,152,133,0.18); }
+  .opt.incorrect{ border-color:var(--bad); background:rgba(193,102,107,0.15); }
+
+  .fillInput{
+    width:100%; background:var(--bg); border:1px solid var(--line); color:var(--ink);
+    padding:10px 12px; border-radius:3px; font-size:14px; font-family:'Inter',sans-serif;
+  }
+  .fillInput.correct{ border-color:var(--ok); }
+  .fillInput.incorrect{ border-color:var(--bad); }
+
+  .matchRow{ display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:14px; }
+  .matchRow .left{ flex:0 0 170px; }
+  .matchRow select{
+    flex:1; background:var(--bg); border:1px solid var(--line); color:var(--ink);
+    padding:8px 10px; border-radius:3px; font-family:'Inter',sans-serif; font-size:14px;
+  }
+  .matchRow select.correct{ border-color:var(--ok); }
+  .matchRow select.incorrect{ border-color:var(--bad); }
+
+  .wordBank{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; min-height:38px; }
+  .answerArea{
+    display:flex; flex-wrap:wrap; gap:8px; min-height:44px; background:var(--bg);
+    border:1px dashed var(--line); border-radius:4px; padding:8px; margin-bottom:4px;
+  }
+  .wordChip{
+    background:var(--bg-panel); border:1px solid var(--line); color:var(--ink);
+    padding:7px 12px; border-radius:3px; cursor:pointer; font-size:13.5px; font-family:'Inter',sans-serif;
+  }
+  .wordChip:hover{ border-color:var(--accent); }
+  .wordChip:disabled{ cursor:default; opacity:0.85; }
+  .resetOrderBtn{
+    background:none; border:none; color:var(--ink-dim); font-size:12px; cursor:pointer;
+    text-decoration:underline; padding:4px 0; font-family:'Inter',sans-serif;
+  }
+  .q.orderCorrect .answerArea{ border-color:var(--ok); }
+  .q.orderCorrect .answerArea .wordChip{ border-color:var(--ok); }
+  .q.orderIncorrect .answerArea{ border-color:var(--bad); }
+  .q.orderIncorrect .answerArea .wordChip{ border-color:var(--bad); }
+
+  .explain{
+    display:none; margin-top:12px; padding:10px 12px; border-radius:3px;
+    background:rgba(217,164,65,0.08); border:1px solid rgba(217,164,65,0.25);
+    font-size:13px; line-height:1.55; color:var(--ink-dim);
+  }
+  .explain.show{ display:block; }
+  .explain strong{ color:var(--accent); }
+
+  .checkBtn{
+    background:var(--accent); color:#16261F; border:none; padding:12px 20px;
+    font-family:'Space Mono',monospace; font-weight:700; font-size:12.5px; letter-spacing:0.04em;
+    border-radius:3px; cursor:pointer; text-transform:uppercase; margin-top:4px;
+  }
+  .checkBtn:hover{ background:#e6b654; }
+  .retryBtn{
+    background:none; border:1px solid var(--line); color:var(--ink-dim); padding:10px 18px;
+    font-family:'Space Mono',monospace; font-weight:700; font-size:11.5px; letter-spacing:0.03em;
+    border-radius:3px; cursor:pointer; margin-top:10px;
+  }
+  .retryBtn:hover{ color:var(--accent); border-color:var(--accent); }
+
+  .groupResult{
+    display:none; margin-top:12px; padding:12px 16px; border-radius:4px;
+    background:var(--bg-card); border:1px solid var(--accent); font-family:'Space Mono',monospace;
+    font-size:13px; text-align:center;
+  }
+  .groupResult.show{ display:block; }
+
+  #overallBar{
+    position:sticky; bottom:0; background:var(--bg-panel); border-top:1px solid var(--line);
+    padding:12px 22px; display:flex; align-items:center; gap:14px; margin:40px -22px -100px;
+  }
+  #overallBar .track{ flex:1; height:8px; background:var(--bg); border-radius:4px; overflow:hidden; }
+  #overallBar .fill{ height:100%; background:var(--accent); transition:width .3s; }
+  #overallBar .pct{ font-family:'Space Mono',monospace; font-size:13px; color:var(--accent); min-width:70px; text-align:right; }
+
+  #loading{ color:var(--ink-dim); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="../dashboard.html">← Volver al menú</a>
+  <span id="levelTag"></span>
+</header>
+<main id="main">
+  <p id="loading">Cargando ejercicio...</p>
+</main>
+
+<script src="../shared/supabase-client.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const exId = params.get("id");
+
+  function renderPrompt(text) {
+    if (!text) return "";
+    return text.replace(/___/g, "<em>___</em>");
+  }
+
+  function shuffleArray(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function prepareQuestions(rawQuestions) {
+    const shuffled = shuffleArray(rawQuestions);
+    return shuffled.map(q => {
+      if (q.type === "mc") {
+        const correctText = q.options[q.correct];
+        const newOptions = shuffleArray(q.options);
+        return Object.assign({}, q, { options: newOptions, correct: newOptions.indexOf(correctText) });
+      }
+      if (q.type === "match") {
+        return Object.assign({}, q, { pairs: shuffleArray(q.pairs) });
+      }
+      return q;
+    });
+  }
+
+  function joinSentence(words) {
+    return words.reduce((sentence, w) => {
+      if (!sentence) return w;
+      if (w === "?" || w === "." || w === "!" || w === ",") return sentence + w;
+      return sentence + " " + w;
+    }, "");
+  }
+
+  function buildQuestion(q, idx) {
+    const wrap = document.createElement("div");
+    wrap.className = "q";
+    wrap.dataset.type = q.type;
+
+    const promptText = q.prompt || (q.type === "match" ? "Relaciona cada elemento con su pareja correcta:" : q.type === "order" ? "Ordena las palabras para formar la oración correcta:" : "");
+    let inner = `<div class="num">Pregunta ${idx + 1}</div><div class="prompt">${renderPrompt(promptText)}</div>`;
+
+    if (q.type === "mc") {
+      inner += q.options.map((opt, i) => `<button type="button" class="opt" data-i="${i}">${opt}</button>`).join("");
+    } else if (q.type === "fill") {
+      inner += `<input type="text" class="fillInput" autocomplete="off" placeholder="Escribe tu respuesta...">`;
+    } else if (q.type === "match") {
+      const rightOptions = shuffleArray(q.pairs.map(p => p[1]));
+      inner += q.pairs.map((pair, i) => {
+        const opts = [`<option value="">-- elegir --</option>`]
+          .concat(rightOptions.map(r => `<option value="${r}">${r}</option>`)).join("");
+        return `<div class="matchRow"><span class="left">${pair[0]}</span><select data-i="${i}">${opts}</select></div>`;
+      }).join("");
+    } else if (q.type === "order") {
+      const shuffled = shuffleArray(q.words);
+      inner += `<div class="answerArea"></div>`;
+      inner += `<div class="wordBank">` + shuffled.map(w => `<button type="button" class="wordChip">${w}</button>`).join("") + `</div>`;
+      inner += `<button type="button" class="resetOrderBtn">↺ Reiniciar orden</button>`;
+    }
+
+    inner += `<div class="explain" data-explain>💡 ${
+      q.type === "order"
+        ? `<strong>Oración correcta:</strong> ${joinSentence(q.words)}${q.explanation ? `<br><strong>Explicación:</strong> ${q.explanation}` : ""}`
+        : `<strong>Explicación:</strong> ${q.explanation || ""}`
+    }</div>`;
+    wrap.innerHTML = inner;
+    return wrap;
+  }
+
+  function attachInteractions(container) {
+    Array.from(container.querySelectorAll(".q")).forEach(qEl => {
+      if (qEl.dataset.type === "mc") {
+        Array.from(qEl.querySelectorAll(".opt")).forEach(btn => {
+          btn.addEventListener("click", () => {
+            Array.from(qEl.querySelectorAll(".opt")).forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+          });
+        });
+      } else if (qEl.dataset.type === "order") {
+        const bank = qEl.querySelector(".wordBank");
+        const answer = qEl.querySelector(".answerArea");
+        const resetBtn = qEl.querySelector(".resetOrderBtn");
+
+        function toAnswer(e) {
+          const btn = e.currentTarget;
+          btn.removeEventListener("click", toAnswer);
+          btn.addEventListener("click", toBank);
+          answer.appendChild(btn);
+        }
+        function toBank(e) {
+          const btn = e.currentTarget;
+          btn.removeEventListener("click", toBank);
+          btn.addEventListener("click", toAnswer);
+          bank.appendChild(btn);
+        }
+        Array.from(bank.querySelectorAll(".wordChip")).forEach(btn => btn.addEventListener("click", toAnswer));
+        resetBtn.addEventListener("click", () => {
+          Array.from(answer.querySelectorAll(".wordChip")).forEach(btn => {
+            btn.removeEventListener("click", toBank);
+            btn.addEventListener("click", toAnswer);
+            bank.appendChild(btn);
+          });
+        });
+      }
+    });
+  }
+
+  function itemCount(q) {
+    return q.type === "match" ? q.pairs.length : 1;
+  }
+
+  function gradeGroup(questions, container) {
+    let correctCount = 0;
+    let totalCount = 0;
+    const qEls = Array.from(container.querySelectorAll(".q"));
+    qEls.forEach((qEl, i) => {
+      const q = questions[i];
+      totalCount += itemCount(q);
+      let isCorrect = false;
+
+      if (q.type === "mc") {
+        const selected = qEl.querySelector(".opt.selected");
+        Array.from(qEl.querySelectorAll(".opt")).forEach((b, bi) => {
+          if (bi === q.correct) b.classList.add("correct");
+          else if (b === selected) b.classList.add("incorrect");
+          b.disabled = true;
+        });
+        isCorrect = selected && parseInt(selected.dataset.i) === q.correct;
+        if (isCorrect) correctCount++;
+      } else if (q.type === "fill") {
+        const input = qEl.querySelector(".fillInput");
+        const val = input.value.trim().toLowerCase();
+        const accepted = q.correct.map(c => c.toLowerCase());
+        isCorrect = accepted.includes(val);
+        input.classList.add(isCorrect ? "correct" : "incorrect");
+        input.disabled = true;
+        if (isCorrect) correctCount++;
+      } else if (q.type === "match") {
+        let pairsCorrect = 0;
+        Array.from(qEl.querySelectorAll("select")).forEach((sel, si) => {
+          const ok = sel.value === q.pairs[si][1];
+          sel.classList.add(ok ? "correct" : "incorrect");
+          sel.disabled = true;
+          if (ok) pairsCorrect++;
+        });
+        isCorrect = pairsCorrect === q.pairs.length;
+        correctCount += pairsCorrect;
+      } else if (q.type === "order") {
+        const answer = qEl.querySelector(".answerArea");
+        const built = Array.from(answer.querySelectorAll(".wordChip")).map(b => b.textContent);
+        isCorrect = built.length === q.words.length && built.every((w, i2) => w === q.words[i2]);
+        qEl.classList.add(isCorrect ? "orderCorrect" : "orderIncorrect");
+        Array.from(qEl.querySelectorAll(".wordChip")).forEach(b => b.disabled = true);
+        qEl.querySelector(".resetOrderBtn").style.display = "none";
+        if (isCorrect) correctCount++;
+      }
+
+      const explainEl = qEl.querySelector("[data-explain]");
+      if (explainEl) explainEl.classList.add("show");
+    });
+    return { correct: correctCount, total: totalCount };
+  }
+
+  // Estado global de resultados por grupo (id → {correct, total})
+  const groupResults = {};
+
+  function updateOverallBar() {
+    const ids = Object.keys(groupResults);
+    if (ids.length === 0) return;
+    const totalCorrect = ids.reduce((s, id) => s + groupResults[id].correct, 0);
+    const totalQuestions = ids.reduce((s, id) => s + groupResults[id].total, 0);
+    const pct = totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+    document.getElementById("overallFill").style.width = pct + "%";
+    document.getElementById("overallPct").textContent = pct + "%";
+    return pct;
+  }
+
+  (async () => {
+    try {
+      const session = await requireSession("../index.html");
+      if (!session) return;
+
+      if (!exId) {
+        document.getElementById("main").innerHTML = `<p id="loading">Ejercicio no especificado.</p>`;
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = `data/${exId}.js`;
+      script.onload = () => {
+        try { renderExercise(window.EXERCISE_DATA); }
+        catch (err) { showError(err); }
+      };
+      script.onerror = () => {
+        document.getElementById("main").innerHTML = `<p id="loading">No se encontró este ejercicio.</p>`;
+      };
+      document.body.appendChild(script);
+    } catch (err) {
+      showError(err);
+    }
+
+    function showError(err) {
+      console.error(err);
+      document.getElementById("main").innerHTML =
+        `<p id="loading" style="color:#C1666B;">Ocurrió un error al cargar el ejercicio.<br>Detalle técnico: ${err && err.message ? err.message : err}</p>`;
+    }
+
+    function renderExercise(data) {
+      document.getElementById("levelTag").textContent = data.level;
+      document.title = data.title + " · Ejercicio";
+
+      const main = document.getElementById("main");
+      main.innerHTML = `
+        <h1>${data.title}</h1>
+        <div class="translation">${data.translation || ""}</div>
+
+        ${data.vocabulary && data.vocabulary.length ? `
+        <section class="block" id="vocabBlock">
+          <h2 class="blockTitle"><span class="n">V</span> Vocabulario</h2>
+          <div class="vocabGrid">
+            ${data.vocabulary.map(v => `<div class="vocabItem"><div class="en">${v.en}</div><div class="es">${v.es}</div></div>`).join("")}
+          </div>
+        </section>` : ""}
+
+        <div id="vocabExerciseSlot"></div>
+
+        <section class="block">
+          <h2 class="blockTitle"><span class="n">T</span> Teoría</h2>
+          <div class="theory">${data.theory}</div>
+        </section>
+
+        <div id="groupsSlot"></div>
+
+        <div id="overallBar">
+          <div class="track"><div class="fill" id="overallFill" style="width:0%"></div></div>
+          <div class="pct" id="overallPct">0%</div>
+        </div>
+      `;
+
+      const groupsSlot = document.getElementById("groupsSlot");
+      const vocabSlot = document.getElementById("vocabExerciseSlot");
+
+      function mountGroup(group, label, targetEl) {
+        const section = document.createElement("section");
+        section.className = "block";
+        section.innerHTML = `
+          <h2 class="blockTitle"><span class="n">${label}</span> ${group.title}</h2>
+          ${group.instructions ? `<p class="groupInstructions">${group.instructions}</p>` : ""}
+          <div class="qList"></div>
+          <button type="button" class="checkBtn">Verificar respuestas</button>
+          <div class="groupResult"></div>
+        `;
+        targetEl.appendChild(section);
+
+        const qList = section.querySelector(".qList");
+        const checkBtn = section.querySelector(".checkBtn");
+        const resultBox = section.querySelector(".groupResult");
+        let currentQuestions = [];
+
+        function mount() {
+          const typedQuestions = group.questions.map(q => Object.assign({ type: group.type }, q));
+          currentQuestions = prepareQuestions(typedQuestions);
+          qList.innerHTML = "";
+          currentQuestions.forEach((q, i) => qList.appendChild(buildQuestion(q, i)));
+          attachInteractions(qList);
+          checkBtn.style.display = "inline-block";
+          resultBox.classList.remove("show");
+        }
+        mount();
+
+        checkBtn.addEventListener("click", async () => {
+          const { correct, total } = gradeGroup(currentQuestions, qList);
+          groupResults[group.id] = { correct, total };
+
+          checkBtn.style.display = "none";
+          resultBox.classList.add("show");
+          resultBox.innerHTML = `${correct}/${total} correctas<br><button type="button" class="retryBtn">Practicar de nuevo (mezclado)</button>`;
+          resultBox.querySelector(".retryBtn").addEventListener("click", mount);
+
+          const overallPct = updateOverallBar();
+          await markExerciseComplete(exId, data.title, overallPct);
+        });
+      }
+
+      if (data.vocabExercise) {
+        mountGroup(Object.assign({ id: "vocab" }, data.vocabExercise), "V", vocabSlot);
+      }
+      (data.groups || []).forEach((group, i) => {
+        mountGroup(Object.assign({ id: "g" + i }, group), i + 1, groupsSlot);
+      });
+    }
+  })();
+</script>
+</body>
+</html>

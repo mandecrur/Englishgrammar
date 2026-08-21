@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi cuaderno</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#C7DEF2; --bg-panel:#DCEAF7; --bg-card:#FFFFFF;
+    --ink:#1B2A41; --ink-dim:#5E7290;
+    --accent:#D9A441; --accent-dim:#8C6E2E;
+    --line: rgba(27,42,65,0.22);
+    --done:#2E7D5B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh;
+    background: linear-gradient(180deg, #DCEAF7 0%, #BFDAF0 100%);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+  }
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:20px 32px; border-bottom:1px solid var(--line);
+    background:var(--bg-panel);
+  }
+  header h1{
+    font-family:'Space Mono',monospace; font-size:17px; margin:0;
+    letter-spacing:0.02em;
+  }
+  #userTag{ font-size:12.5px; color:var(--ink-dim); }
+  #logoutBtn{
+    background:none; border:1px solid var(--line); color:var(--ink-dim);
+    padding:7px 14px; border-radius:3px; font-size:12px; cursor:pointer;
+    font-family:'Inter',sans-serif; margin-left:12px;
+  }
+  #logoutBtn:hover{ border-color:var(--accent); color:var(--accent); }
+  .headRight{ display:flex; align-items:center; }
+  main{ max-width:840px; margin:0 auto; padding:40px 24px 80px; }
+  .progressBar{
+    background:#FFFFFF; border:1px solid var(--line); border-radius:4px;
+    padding:18px 22px; margin-bottom:32px; display:flex; align-items:center; gap:18px;
+    box-shadow:0 2px 8px rgba(27,42,65,0.06);
+  }
+  .progressBar .num{ font-family:'Space Mono',monospace; font-size:26px; color:var(--accent); }
+  .progressBar .track{ flex:1; height:8px; background:var(--bg); border-radius:4px; overflow:hidden; }
+  .progressBar .fill{ height:100%; background:var(--accent); border-radius:4px; transition:width .4s; }
+  .progressBar .label{ font-size:12.5px; color:var(--ink-dim); }
+  h2.section{
+    font-family:'Space Mono',monospace; font-size:13px; text-transform:uppercase;
+    letter-spacing:0.08em; color:var(--ink-dim); margin:34px 0 14px;
+  }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+  .exCard{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:4px;
+    padding:18px; text-decoration:none; color:var(--ink); position:relative;
+    display:block; transition:border-color .15s; box-shadow:0 2px 8px rgba(27,42,65,0.06);
+  }
+  .exCard:hover{ border-color:var(--accent); }
+  .exCard.done{ border-color:var(--done); }
+  .exCard.locked{ opacity:0.45; cursor:default; }
+  .exCard.locked:hover{ border-color:var(--line); }
+  .exCard .stamp{
+    position:absolute; top:14px; right:14px; font-size:16px;
+  }
+  .exCard .name{ font-weight:600; font-size:14.5px; margin:0 0 4px; padding-right:24px; }
+  .exCard .cat{ font-size:11.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.05em; }
+  .empty{ color:var(--ink-dim); font-size:13.5px; padding:20px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>JohnPeter <span style="color:var(--ink-dim); font-weight:400;">· Cuaderno de ejercicios</span></h1>
+  <div class="headRight">
+    <span id="userTag"></span>
+    <button id="logoutBtn">Salir</button>
+  </div>
+</header>
+
+<main>
+  <div class="progressBar">
+    <div class="num" id="pctNum">0%</div>
+    <div>
+      <div class="track"><div class="fill" id="pctFill" style="width:0%"></div></div>
+      <div class="label" id="pctLabel">0 de 0 ejercicios completados</div>
+    </div>
+  </div>
+
+  <div id="sections"></div>
+</main>
+
+<script src="shared/supabase-client.js"></script>
+<script>
+  // =====================================================================
+  // Temario completo de gramática inglesa (116 temas, 6 niveles).
+  // available:true → el ejercicio ya está construido (usa el motor engine.html)
+  // available:false → todavía no se ha creado ese ejercicio (aparece bloqueado)
+  // Para agregar uno nuevo: crea ejercicios/data/<id>.js con el motor engine.html
+  // =====================================================================
+  const EXERCISES = [
+    // ---------- NIVEL 1 · BEGINNERS (Pre-A1) ----------
+    { id:"n1-01", name:"Verb to be (am/is/are)", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-01", available:true },
+    { id:"n1-02", name:"Verb to have (have/has)", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-02", available:true },
+    { id:"n1-03", name:"Basic greetings and introductions", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-03", available:true },
+    { id:"n1-04", name:"Numbers 1-100", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-04", available:true },
+    { id:"n1-05", name:"Days, months, seasons", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-05", available:true },
+    { id:"n1-06", name:"Colors, shapes, sizes", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-06", available:true },
+    { id:"n1-07", name:"Simple adjectives", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-07", available:true },
+    { id:"n1-08", name:"Prepositions of place", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-08", available:true },
+    { id:"n1-09", name:"Prepositions of time", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-09", available:true },
+    { id:"n1-10", name:"This / That / These / Those", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-10", available:true },
+    { id:"n1-11", name:"Question words", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-11", available:true },
+    { id:"n1-12", name:"Simple present: I/you/we/they", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-12", available:true },
+    { id:"n1-13", name:"Simple present: he/she/it (+s)", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-13", available:true },
+    { id:"n1-14", name:"Basic plurals (-s)", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-14", available:true },
+    { id:"n1-15", name:"There is / There are", cat:"Nivel 1 · Beginners", url:"ejercicios/engine.html?id=n1-15", available:true },
+
+    // ---------- NIVEL 2 · BÁSICO 1 (A1) ----------
+    { id:"n2-01", name:"Simple present (all forms)", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-01", available:true },
+    { id:"n2-02", name:"Present progressive", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-02", available:true },
+    { id:"n2-03", name:"Simple past of to be", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-03", available:true },
+    { id:"n2-04", name:"Simple past (regular verbs)", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-04", available:true },
+    { id:"n2-05", name:"Simple past (irregular verbs)", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-05", available:true },
+    { id:"n2-06", name:"Simple future (will)", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-06", available:true },
+    { id:"n2-07", name:"Simple future (be going to)", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-07", available:true },
+    { id:"n2-08", name:"Present progressive for future", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-08", available:true },
+    { id:"n2-09", name:"Imperatives", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-09", available:true },
+    { id:"n2-10", name:"Subject pronouns", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-10", available:true },
+    { id:"n2-11", name:"Object pronouns", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-11", available:true },
+    { id:"n2-12", name:"Possessive adjectives", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-12", available:true },
+    { id:"n2-13", name:"Possessive pronouns", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-13", available:true },
+    { id:"n2-14", name:"Count nouns (a/an, -s/-es)", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-14", available:true },
+    { id:"n2-15", name:"Irregular plural nouns", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-15", available:true },
+    { id:"n2-16", name:"Comparative adjectives (-er/more)", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-16", available:true },
+    { id:"n2-17", name:"Superlative adjectives (-est/most)", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-17", available:true },
+    { id:"n2-18", name:"Adverbs of frequency", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-18", available:true },
+    { id:"n2-19", name:"Can / can't", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-19", available:true },
+    { id:"n2-20", name:"Basic time clauses", cat:"Nivel 2 · Básico 1 (A1)", url:"ejercicios/engine.html?id=n2-20", available:true },
+
+    // ---------- NIVEL 3 · BÁSICO 2 (A2) ----------
+    { id:"n3-01", name:"Simple present vs present progressive", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-01", available:true },
+    { id:"n3-02", name:"Past progressive", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-02", available:true },
+    { id:"n3-03", name:"Present perfect (ever/never)", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-03", available:true },
+    { id:"n3-04", name:"Present perfect with for/since", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-04", available:true },
+    { id:"n3-05", name:"Simple past vs present perfect", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-05", available:true },
+    { id:"n3-06", name:"Future: will vs be going to", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-06", available:true },
+    { id:"n3-07", name:"Future time clauses", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-07", available:true },
+    { id:"n3-08", name:"Must / have to", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-08", available:true },
+    { id:"n3-09", name:"Must not vs don't have to", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-09", available:true },
+    { id:"n3-10", name:"Should / ought to", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-10", available:true },
+    { id:"n3-11", name:"Could (peticiones/pasado)", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-11", available:true },
+    { id:"n3-12", name:"Count vs noncount nouns", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-12", available:true },
+    { id:"n3-13", name:"Expressions of quantity", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-13", available:true },
+    { id:"n3-14", name:"A few / few / a little / little", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-14", available:true },
+    { id:"n3-15", name:"Articles (a/an, the, ø)", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-15", available:true },
+    { id:"n3-16", name:"Nouns as adjectives", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-16", available:true },
+    { id:"n3-17", name:"Possessive nouns ('s, s')", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-17", available:true },
+    { id:"n3-18", name:"Reflexive pronouns", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-18", available:true },
+    { id:"n3-19", name:"Comparatives irregulares", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-19", available:true },
+    { id:"n3-20", name:"Superlatives irregulares", cat:"Nivel 3 · Básico 2 (A2)", url:"ejercicios/engine.html?id=n3-20", available:true },
+
+    // ---------- NIVEL 4 · INTERMEDIO BAJO (B1) ----------
+    { id:"n4-01", name:"Present perfect progressive", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-01", available:true },
+    { id:"n4-02", name:"Past perfect", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-02", available:true },
+    { id:"n4-03", name:"Past perfect vs simple past", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-03", available:true },
+    { id:"n4-04", name:"Future progressive", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-04", available:true },
+    { id:"n4-05", name:"Future perfect", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-05", available:true },
+    { id:"n4-06", name:"Used to", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-06", available:true },
+    { id:"n4-07", name:"Be used to vs get used to", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-07", available:true },
+    { id:"n4-08", name:"May / might / could (posibilidad)", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-08", available:true },
+    { id:"n4-09", name:"Would (peticiones/preferencias)", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-09", available:true },
+    { id:"n4-10", name:"Had better", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-10", available:true },
+    { id:"n4-11", name:"Be supposed to", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-11", available:true },
+    { id:"n4-12", name:"Certeza en presente (must/may/can't be)", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-12", available:true },
+    { id:"n4-13", name:"Passive voice (present/past)", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-13", available:true },
+    { id:"n4-14", name:"Passive with modals", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-14", available:true },
+    { id:"n4-15", name:"Gerunds as subjects/objects", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-15", available:true },
+    { id:"n4-16", name:"Infinitives of purpose", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-16", available:true },
+    { id:"n4-17", name:"Verbs + gerund", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-17", available:true },
+    { id:"n4-18", name:"Verbs + infinitive", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-18", available:true },
+    { id:"n4-19", name:"Verbs + gerund/infinitive", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-19", available:true },
+    { id:"n4-20", name:"Adverb clauses (because/since/so that)", cat:"Nivel 4 · Intermedio Bajo (B1)", url:"ejercicios/engine.html?id=n4-20", available:true },
+
+    // ---------- NIVEL 5 · INTERMEDIO ALTO (B2) ----------
+    { id:"n5-01", name:"Past perfect progressive", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-01", available:true },
+    { id:"n5-02", name:"Future perfect progressive", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-02", available:true },
+    { id:"n5-03", name:"Certeza en pasado (must have been...)", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-03", available:true },
+    { id:"n5-04", name:"Modales de pasado (should/could/would have)", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-04", available:true },
+    { id:"n5-05", name:"Modales progresivos", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-05", available:true },
+    { id:"n5-06", name:"Passive with get", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-06", available:true },
+    { id:"n5-07", name:"Stative passive + preposiciones", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-07", available:true },
+    { id:"n5-08", name:"Adjetivos participiales (bored/boring)", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-08", available:true },
+    { id:"n5-09", name:"Noun clauses con that", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-09", available:true },
+    { id:"n5-10", name:"Noun clauses con if/whether", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-10", available:true },
+    { id:"n5-11", name:"Noun clauses con question words", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-11", available:true },
+    { id:"n5-12", name:"Reported speech (afirmaciones/preguntas)", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-12", available:true },
+    { id:"n5-13", name:"Reported speech (cambios de tiempo)", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-13", available:true },
+    { id:"n5-14", name:"Subjunctive en noun clauses", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-14", available:true },
+    { id:"n5-15", name:"Adjective clauses (who/which/that)", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-15", available:true },
+    { id:"n5-16", name:"Adjective clauses (where/when)", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-16", available:true },
+    { id:"n5-17", name:"Cláusulas restrictivas vs no restrictivas", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-17", available:true },
+    { id:"n5-18", name:"Reducción de adjective clauses", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-18", available:true },
+    { id:"n5-19", name:"Conectores de contraste", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-19", available:true },
+    { id:"n5-20", name:"Conectores de causa y efecto", cat:"Nivel 5 · Intermedio Alto (B2)", url:"ejercicios/engine.html?id=n5-20", available:true },
+
+    // ---------- NIVEL 6 · AVANZADO (C1) ----------
+    { id:"n6-01", name:"Inversion", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-01", available:true },
+    { id:"n6-02", name:"Ellipsis and substitution", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-02", available:true },
+    { id:"n6-03", name:"Cleft sentences", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-03", available:true },
+    { id:"n6-04", name:"Modales avanzados de deducción", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-04", available:true },
+    { id:"n6-05", name:"Mixed conditionals", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-05", available:true },
+    { id:"n6-06", name:"Omitting if", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-06", available:true },
+    { id:"n6-07", name:"Implied conditions", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-07", available:true },
+    { id:"n6-08", name:"As if / as though", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-08", available:true },
+    { id:"n6-09", name:"Wishes con would", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-09", available:true },
+    { id:"n6-10", name:"Wishes con past perfect", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-10", available:true },
+    { id:"n6-11", name:"Estructuras pasivas avanzadas", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-11", available:true },
+    { id:"n6-12", name:"Gerundios/infinitivos pasivos", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-12", available:true },
+    { id:"n6-13", name:"Gerundios/infinitivos perfectos", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-13", available:true },
+    { id:"n6-14", name:"Need + gerundio vs infinitivo pasivo", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-14", available:true },
+    { id:"n6-15", name:"Posesivo + gerundio", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-15", available:true },
+    { id:"n6-16", name:"Causatives (have/get something done)", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-16", available:true },
+    { id:"n6-17", name:"Reducción avanzada de adverb clauses", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-17", available:true },
+    { id:"n6-18", name:"Conectores académicos", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-18", available:true },
+    { id:"n6-19", name:"Estructuras enfáticas", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-19", available:true },
+    { id:"n6-20", name:"Subjunctive en inglés formal", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-20", available:true },
+    { id:"n6-21", name:"Impersonal passive", cat:"Nivel 6 · Avanzado (C1)", url:"ejercicios/engine.html?id=n6-21", available:true },
+  ];
+
+  (async () => {
+    const session = await requireSession();
+    if (!session) return;
+
+    document.getElementById("userTag").textContent = session.user.email;
+    document.getElementById("logoutBtn").onclick = signOut;
+
+    const myProgress = await getMyProgress();
+    const doneIds = new Set(myProgress.map(p => p.exercise_id));
+
+    // Barra de progreso
+    const pct = EXERCISES.length ? Math.round((doneIds.size / EXERCISES.length) * 100) : 0;
+    document.getElementById("pctNum").textContent = pct + "%";
+    document.getElementById("pctFill").style.width = pct + "%";
+    document.getElementById("pctLabel").textContent = `${doneIds.size} de ${EXERCISES.length} ejercicios completados`;
+
+    // Agrupar por categoría
+    const byCat = {};
+    EXERCISES.forEach(ex => {
+      byCat[ex.cat] = byCat[ex.cat] || [];
+      byCat[ex.cat].push(ex);
+    });
+
+    const container = document.getElementById("sections");
+    if (EXERCISES.length === 0) {
+      container.innerHTML = `<p class="empty">Aún no hay ejercicios cargados. Tu profesor los añadirá pronto.</p>`;
+      return;
+    }
+
+    Object.entries(byCat).forEach(([cat, list]) => {
+      const section = document.createElement("div");
+      const done = list.filter(ex => doneIds.has(ex.id)).length;
+      section.innerHTML = `<h2 class="section">${cat} — ${done}/${list.length}</h2>`;
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      list.forEach(ex => {
+        const isDone = doneIds.has(ex.id);
+        const locked = ex.available === false;
+        const a = document.createElement(locked ? "div" : "a");
+        if (!locked) {
+          a.href = ex.url;
+          a.rel = "noopener";
+        }
+        a.className = "exCard" + (isDone ? " done" : "") + (locked ? " locked" : "");
+        a.innerHTML = `
+          <div class="stamp">${locked ? "🔒" : (isDone ? "✓" : "→")}</div>
+          <p class="name">${ex.name}</p>
+          <div class="cat">${locked ? "Próximamente" : (isDone ? "Completado" : "Pendiente")}</div>
+        `;
+        grid.appendChild(a);
+      });
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ejercicio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#16261F; --bg-panel:#1E362C; --bg-card:#233F32;
+    --ink:#F0EBDA; --ink-dim:#B9C4BA;
+    --accent:#D9A441;
+    --line: rgba(240,235,218,0.14);
+    --ok:#7C9885; --bad:#C1666B;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; }
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:18px 28px; border-bottom:1px solid var(--line); background:var(--bg-panel);
+    position:sticky; top:0; z-index:5;
+  }
+  header a{ color:var(--ink-dim); text-decoration:none; font-size:13px; }
+  header a:hover{ color:var(--accent); }
+  #levelTag{
+    font-family:'Space Mono',monospace; font-size:10.5px; background:var(--accent);
+    color:#16261F; padding:3px 9px; border-radius:2px;
+  }
+  main{ max-width:720px; margin:0 auto; padding:36px 22px 100px; }
+  h1{ font-family:'Space Mono',monospace; font-size:24px; margin:6px 0 4px; }
+  .esTag{ color:var(--ink-dim); font-size:13px; margin-bottom:26px; }
+  .theory{
+    background:var(--bg-card); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:4px; padding:20px 22px; margin-bottom:32px; font-size:14px; line-height:1.65;
+  }
+  .theory h2{ font-family:'Space Mono',monospace; font-size:12px; text-transform:uppercase;
+    letter-spacing:0.06em; color:var(--accent); margin:0 0 10px; }
+  .theory p{ margin:0 0 10px; }
+  .theory p:last-child{ margin-bottom:0; }
+  .theory table{ width:100%; border-collapse:collapse; margin:10px 0; font-size:13.5px; }
+  .theory td, .theory th{ border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  .theory strong{ color:var(--accent); }
+
+  .q{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:4px;
+    padding:18px 20px; margin-bottom:16px;
+  }
+  .q .num{ font-family:'Space Mono',monospace; font-size:11px; color:var(--ink-dim); margin-bottom:8px; }
+  .q .prompt{ font-size:15px; margin-bottom:14px; line-height:1.5; }
+  .q .prompt em{ color:var(--accent); font-style:normal; border-bottom:1px dashed var(--accent); }
+
+  .opt{ display:block; width:100%; text-align:left; background:var(--bg); border:1px solid var(--line);
+    color:var(--ink); padding:10px 12px; border-radius:3px; margin-bottom:8px; cursor:pointer; font-size:14px;
+    font-family:'Inter',sans-serif; }
+  .opt:hover{ border-color:var(--accent); }
+  .opt.selected{ border-color:var(--accent); background:rgba(217,164,65,0.1); }
+  .opt.correct{ border-color:var(--ok); background:rgba(124,152,133,0.18); }
+  .opt.incorrect{ border-color:var(--bad); background:rgba(193,102,107,0.15); }
+
+  .fillInput{
+    width:100%; background:var(--bg); border:1px solid var(--line); color:var(--ink);
+    padding:10px 12px; border-radius:3px; font-size:14px; font-family:'Inter',sans-serif;
+  }
+  .fillInput.correct{ border-color:var(--ok); }
+  .fillInput.incorrect{ border-color:var(--bad); }
+
+  .matchRow{ display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:14px; }
+  .matchRow .left{ flex:0 0 160px; }
+  .matchRow select{
+    flex:1; background:var(--bg); border:1px solid var(--line); color:var(--ink);
+    padding:8px 10px; border-radius:3px; font-family:'Inter',sans-serif; font-size:14px;
+  }
+  .matchRow select.correct{ border-color:var(--ok); }
+  .matchRow select.incorrect{ border-color:var(--bad); }
+
+  .explain{
+    display:none; margin-top:12px; padding:10px 12px; border-radius:3px;
+    background:rgba(217,164,65,0.08); border:1px solid rgba(217,164,65,0.25);
+    font-size:13px; line-height:1.55; color:var(--ink-dim);
+  }
+  .explain.show{ display:block; }
+  .explain strong{ color:var(--accent); }
+
+  #checkBtn, #retryBtn{
+    width:100%; background:var(--accent); color:#16261F; border:none; padding:13px;
+    font-family:'Space Mono',monospace; font-weight:700; font-size:13px; letter-spacing:0.04em;
+    border-radius:3px; cursor:pointer; text-transform:uppercase; margin-top:8px;
+  }
+  #checkBtn:hover, #retryBtn:hover{ background:#e6b654; }
+  #retryBtn{ background:none; border:1px solid var(--line); color:var(--ink-dim); margin-top:10px; }
+  #retryBtn:hover{ color:var(--accent); border-color:var(--accent); }
+
+  #resultBox{
+    display:none; text-align:center; padding:24px; background:var(--bg-card);
+    border:1px solid var(--accent); border-radius:4px; margin-top:20px;
+  }
+  #resultBox .score{ font-family:'Space Mono',monospace; font-size:36px; color:var(--accent); }
+  #resultBox .label{ color:var(--ink-dim); font-size:13px; margin-top:4px; }
+  #loading{ color:var(--ink-dim); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="../dashboard.html">← Volver al menú</a>
+  <span id="levelTag"></span>
+</header>
+<main id="main">
+  <p id="loading">Cargando ejercicio...</p>
+</main>
+
+<script src="../shared/supabase-client.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const exId = params.get("id");
+
+  function renderPrompt(text) {
+    // Convierte ___ en un hueco resaltado (solo visual, no afecta la lógica)
+    return text.replace(/___/g, "<em>___</em>");
+  }
+
+  function buildQuestion(q, idx) {
+    const wrap = document.createElement("div");
+    wrap.className = "q";
+    wrap.dataset.type = q.type;
+    wrap.dataset.idx = idx;
+
+    let inner = `<div class="num">Pregunta ${idx + 1}</div><div class="prompt">${renderPrompt(q.prompt)}</div>`;
+
+    if (q.type === "mc") {
+      inner += q.options.map((opt, i) =>
+        `<button type="button" class="opt" data-i="${i}">${opt}</button>`
+      ).join("");
+    } else if (q.type === "fill") {
+      inner += `<input type="text" class="fillInput" autocomplete="off" placeholder="Escribe tu respuesta...">`;
+    } else if (q.type === "match") {
+      const rightOptions = q.pairs.map(p => p[1]);
+      inner += q.pairs.map((pair, i) => {
+        const opts = [`<option value="">-- elegir --</option>`]
+          .concat(rightOptions.map(r => `<option value="${r}">${r}</option>`)).join("");
+        return `<div class="matchRow"><span class="left">${pair[0]}</span><select data-i="${i}">${opts}</select></div>`;
+      }).join("");
+    }
+
+    inner += `<div class="explain" data-explain>💡 <strong>Explicación:</strong> ${q.explanation}</div>`;
+    wrap.innerHTML = inner;
+    return wrap;
+  }
+
+  function attachInteractions(container) {
+    Array.from(container.querySelectorAll(".q")).forEach(qEl => {
+      if (qEl.dataset.type === "mc") {
+        Array.from(qEl.querySelectorAll(".opt")).forEach(btn => {
+          btn.addEventListener("click", () => {
+            Array.from(qEl.querySelectorAll(".opt")).forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+          });
+        });
+      }
+    });
+  }
+
+  function gradeAll(data, container) {
+    let correctCount = 0;
+    const questions = Array.from(container.querySelectorAll(".q"));
+    questions.forEach((qEl, i) => {
+      const q = data.questions[i];
+      let isCorrect = false;
+
+      if (q.type === "mc") {
+        const selected = qEl.querySelector(".opt.selected");
+        const buttons = Array.from(qEl.querySelectorAll(".opt"));
+        buttons.forEach((b, bi) => {
+          if (bi === q.correct) b.classList.add("correct");
+          else if (b === selected) b.classList.add("incorrect");
+        });
+        isCorrect = selected && parseInt(selected.dataset.i) === q.correct;
+      } else if (q.type === "fill") {
+        const input = qEl.querySelector(".fillInput");
+        const val = input.value.trim().toLowerCase();
+        const accepted = q.correct.map(c => c.toLowerCase());
+        isCorrect = accepted.includes(val);
+        input.classList.add(isCorrect ? "correct" : "incorrect");
+        input.disabled = true;
+      } else if (q.type === "match") {
+        const selects = Array.from(qEl.querySelectorAll("select"));
+        let allOk = true;
+        selects.forEach((sel, si) => {
+          const ok = sel.value === q.pairs[si][1];
+          sel.classList.add(ok ? "correct" : "incorrect");
+          sel.disabled = true;
+          if (!ok) allOk = false;
+        });
+        isCorrect = allOk;
+      }
+
+      if (isCorrect) correctCount++;
+      qEl.querySelector("[data-explain]").classList.add("show");
+    });
+    return correctCount;
+  }
+
+  (async () => {
+    try {
+      const session = await requireSession("../index.html");
+      if (!session) return;
+
+      if (!exId) {
+        document.getElementById("main").innerHTML = `<p id="loading">Ejercicio no especificado.</p>`;
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = `data/${exId}.js`;
+      script.onload = () => {
+        try {
+          renderExercise(window.EXERCISE_DATA);
+        } catch (err) {
+          showError(err);
+        }
+      };
+      script.onerror = () => {
+        document.getElementById("main").innerHTML = `<p id="loading">No se encontró este ejercicio.</p>`;
+      };
+      document.body.appendChild(script);
+    } catch (err) {
+      showError(err);
+    }
+
+    function showError(err) {
+      console.error(err);
+      document.getElementById("main").innerHTML =
+        `<p id="loading" style="color:#C1666B;">Ocurrió un error al cargar el ejercicio.<br>
+        Detalle técnico: ${err && err.message ? err.message : err}</p>`;
+    }
+
+    function renderExercise(data) {
+      document.getElementById("levelTag").textContent = data.level;
+      document.title = data.title + " · Ejercicio";
+
+      const main = document.getElementById("main");
+      main.innerHTML = `
+        <h1>${data.title}</h1>
+        <div class="esTag">${data.subtitle || ""}</div>
+        <div class="theory">
+          <h2>Teoría</h2>
+          ${data.theory}
+        </div>
+        <div id="questions"></div>
+        <button id="checkBtn">Comprobar respuestas</button>
+        <div id="resultBox">
+          <div class="score" id="scoreText"></div>
+          <div class="label">respuestas correctas</div>
+          <button id="retryBtn">Intentar de nuevo</button>
+        </div>
+      `;
+
+      const qContainer = document.getElementById("questions");
+      data.questions.forEach((q, i) => qContainer.appendChild(buildQuestion(q, i)));
+      attachInteractions(qContainer);
+
+      document.getElementById("checkBtn").addEventListener("click", async () => {
+        const correct = gradeAll(data, qContainer);
+        const total = data.questions.length;
+        const pct = Math.round((correct / total) * 100);
+
+        document.getElementById("checkBtn").style.display = "none";
+        document.getElementById("resultBox").style.display = "block";
+        document.getElementById("scoreText").textContent = `${correct}/${total} (${pct}%)`;
+
+        await markExerciseComplete(exId, data.title, pct);
+      });
+
+      document.getElementById("retryBtn").addEventListener("click", () => {
+        window.location.reload();
+      });
+    }
+  })();
+</script>
+</body>
+</html>
